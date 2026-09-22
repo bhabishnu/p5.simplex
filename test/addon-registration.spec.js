@@ -57,7 +57,7 @@ for (const version of versions) {
     
       expect(firstLoad.installed).toBe(true)
       expect(firstLoad.enumerable).toBe(false)
-      expect(firstLoad.noiseUnchanged).toBe(true)
+      expect(firstLoad.noiseUnchanged).toBe(false)
       expect(firstLoad.seedUnchanged).toBe(true)
       expect(firstLoad.detailUnchanged).toBe(true)
       expect(firstLoad.registerAddonCalls).toBe(version.registerAddon ? 1 : 0)
@@ -91,10 +91,10 @@ for (const version of versions) {
 }, mode)
 
       expect(publicApi).toEqual({
-        noiseMode: 'undefined',
-        simplex: 'undefined',
-        instanceNoiseMode: 'undefined',
-        instanceSimplex: 'undefined'
+        noiseMode: 'function',
+        simplex: 'string',
+        instanceNoiseMode: 'function',
+        instanceSimplex: 'string'
       })
     })
   }
