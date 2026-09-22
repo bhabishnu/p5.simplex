@@ -84,7 +84,7 @@ for (const version of versions) {
   expect(result.simplexValue).not.toBe(result.defaultValue)
 })
 
-  test(`${version.name} matches simplex reference values`, async ({ page }) => {
+  test(`${version.name} randomizes unseeded simplex once`, async ({ page }) => {
   const p5Path = path.resolve(
     __dirname,
     `../node_modules/${version.package}/lib/p5.min.js`
@@ -93,28 +93,32 @@ for (const version of versions) {
   await page.addScriptTag({ path: p5Path })
   await page.addScriptTag({ path: addonPath })
 
-  const values = await page.evaluate(() => {
+  const result = await page.evaluate(() => {
     const sketch = new p5(function() {})
 
     sketch.noiseMode(sketch.SIMPLEX)
 
-    return {
-      oneD: sketch.noise(0.123),
-      twoD: sketch.noise(0.123, 0.456),
-      threeD: sketch.noise(0.123, 0.456, 0.789),
-      negative1D: sketch.noise(-0.25),
-      negative2D: sketch.noise(-0.25, 0.75),
-      negative3D: sketch.noise(-0.25, 0.75, -1.125)
+    const originalRandom = Math.random
+    let first
+    let second
+
+    Math.random = () => 0.25
+
+    try {
+      first = sketch.noise(0.123, 0.456)
+      second = sketch.noise(0.123, 0.456)
+    } finally {
+      Math.random = originalRandom
     }
+
+    sketch.noiseSeed(1073741824)
+    const explicit = sketch.noise(0.123, 0.456)
+
+    return { first, second, explicit }
   })
 
-  expect(values.oneD).toBeCloseTo(0.6823514402090586, 10)
-  expect(values.twoD).toBeCloseTo(0.4686595747396688, 10)
-  expect(values.threeD).toBeCloseTo(0.6145049050715903, 10)
-
-  expect(values.negative1D).toBeCloseTo(0.22200570106506345, 10)
-  expect(values.negative2D).toBeCloseTo(0.6415918437609047, 10)
-  expect(values.negative3D).toBeCloseTo(0.7115989327430725, 10)
+  expect(result.first).toBe(result.second)
+  expect(result.first).toBe(result.explicit)
 })
 
   test(`${version.name} keeps simplex mode isolated per instance`, async ({ page }) => {
@@ -298,4 +302,53 @@ test('p5.js 2.3.0 leaves strands noise untouched in simplex mode', async ({ page
     isStrandsNode: true,
     dimension: 1
   })
+})
+
+test('p5.js 1.11.13 skips native noise for CPU simplex samples', async ({ page }) => {
+  const p5Path = path.resolve(
+    __dirname,
+    '../node_modules/p5-v1/lib/p5.min.js'
+  )
+
+  await page.addScriptTag({ path: p5Path })
+
+  await page.evaluate(() => {
+    const originalNoise = p5.prototype.noise
+
+    window.__nativeNoiseCalls = 0
+
+    p5.prototype.noise = function() {
+      window.__nativeNoiseCalls++
+      return originalNoise.apply(this, arguments)
+    }
+  })
+
+  await page.addScriptTag({ path: addonPath })
+
+  const result = await page.evaluate(() => {
+    const sketch = new p5(function() {})
+    sketch.noiseMode(sketch.SIMPLEX)
+
+    const originalRandom = Math.random
+    let randomCalls = 0
+
+    Math.random = () => {
+      randomCalls++
+      return 0.25
+    }
+
+    try {
+      sketch.noise(0.123, 0.456)
+
+      return {
+        nativeNoiseCalls: window.__nativeNoiseCalls,
+        randomCalls
+      }
+    } finally {
+      Math.random = originalRandom
+    }
+  })
+
+  expect(result.nativeNoiseCalls).toBe(0)
+  expect(result.randomCalls).toBe(1)
 })

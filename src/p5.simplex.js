@@ -1,3 +1,14 @@
+/*
+ * Simplex noise ported from Stefan Gustavson's simplexnoise1234.c:
+ * https://github.com/stegu/perlin-noise
+ *
+ * The original Simplex noise implementation was released into the
+ * public domain by its author.
+ *
+ * The 1D implementation uses the 0.395 scale factor described in
+ * Gustavson's source comments so the output approximately fills [-1, 1].
+ */
+
 (function() {
   const installed = Symbol.for('p5.simplex.addon.installed')
 
@@ -31,6 +42,8 @@ for (let i = 0; i < 512; i++) {
   perm[i] = permutation[i & 255]
 }
 
+  let permutationInitialized = false
+
 function seedPermutation(seed) {
   const values = new Array(256)
 
@@ -56,6 +69,8 @@ function seedPermutation(seed) {
   for (let i = 0; i < 512; i++) {
     perm[i] = values[i & 255]
   }
+
+  permutationInitialized = true
 }
 
 function grad1(hash, x) {
@@ -290,6 +305,9 @@ function simplex(p5, fn) {
   const originalNoise = fn.noise
   const originalNoiseSeed = fn.noiseSeed
 
+  const needsNativeNoiseDispatch =
+    typeof p5.registerAddon === 'function'
+
   fn.SIMPLEX = 'simplex'
 
   fn.noiseMode = function(mode) {
@@ -313,13 +331,26 @@ function simplex(p5, fn) {
       return originalNoise.apply(this, arguments)
     }
 
-    const originalResult = originalNoise.apply(this, arguments)
+    if (needsNativeNoiseDispatch) {
+      const originalResult = originalNoise.apply(this, arguments)
+
+      if (
+        typeof originalResult !== 'number' ||
+        Number.isNaN(originalResult)
+      ) {
+        return originalResult
+     }
+    }
 
     if (
-      typeof originalResult !== 'number' ||
-      Number.isNaN(originalResult)
+      !needsNativeNoiseDispatch &&
+      (arguments.length === 0 || x === undefined || Number.isNaN(x))
     ) {
-      return originalResult
+      return NaN
+    }
+
+    if (!permutationInitialized) {
+      seedPermutation((Math.random() * 4294967296) >>> 0)
     }
 
     let raw

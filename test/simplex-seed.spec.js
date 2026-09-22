@@ -186,4 +186,31 @@ for (const version of versions) {
   expect(result.totalCalls).toBe(2)
   expect(result.nullValue).toBe(result.undefinedValue)
 })
+
+  test(`${version.name} matches seeded simplex reference values`, async ({ page }) => {
+  const p5Path = path.resolve(
+    __dirname,
+    `../node_modules/${version.package}/lib/p5.min.js`
+  )
+
+  await page.addScriptTag({ path: p5Path })
+  await page.addScriptTag({ path: addonPath })
+
+  const result = await page.evaluate(() => {
+    const sketch = new p5(function() {})
+
+    sketch.noiseMode(sketch.SIMPLEX)
+    sketch.noiseSeed(1234)
+
+    return {
+      oneD: sketch.noise(0.123),
+      twoD: sketch.noise(0.123, 0.456),
+      threeD: sketch.noise(0.123, 0.456, 0.789)
+    }
+  })
+
+  expect(result.oneD).toBeCloseTo(0.3434565389153417, 10)
+  expect(result.twoD).toBeCloseTo(0.45901264471893405, 10)
+  expect(result.threeD).toBeCloseTo(0.3977113023828554, 10)
+})
 }
