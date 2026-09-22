@@ -195,6 +195,57 @@ for (const version of versions) {
   expect(result.simplexValue).toBeGreaterThanOrEqual(0)
   expect(result.simplexValue).toBeLessThanOrEqual(1)
 })
+
+  test(`${version.name} falls back to default noise for unknown modes`, async ({ page }) => {
+  const p5Path = path.resolve(
+    __dirname,
+    `../node_modules/${version.package}/lib/p5.min.js`
+  )
+
+  await page.addScriptTag({ path: p5Path })
+  await page.addScriptTag({ path: addonPath })
+
+  const result = await page.evaluate(() => {
+    const sketch = new p5(function() {})
+
+    sketch.noiseSeed(1234)
+    const expected = sketch.noise(0.123, 0.456, 0.789)
+
+    sketch.noiseMode('unknown')
+    const actual = sketch.noise(0.123, 0.456, 0.789)
+
+    return { expected, actual }
+  })
+
+  expect(result.actual).toBe(result.expected)
+})
+
+  test(`${version.name} handles default and extra arguments in simplex mode`, async ({ page }) => {
+  const p5Path = path.resolve(
+    __dirname,
+    `../node_modules/${version.package}/lib/p5.min.js`
+  )
+
+  await page.addScriptTag({ path: p5Path })
+  await page.addScriptTag({ path: addonPath })
+
+  const result = await page.evaluate(() => {
+    const sketch = new p5(function() {})
+
+    sketch.noiseMode(sketch.SIMPLEX)
+
+    return {
+      noArgs: sketch.noise(),
+      undefinedX: sketch.noise(undefined),
+      three: sketch.noise(0.123, 0.456, 0.789),
+      extra: sketch.noise(0.123, 0.456, 0.789, 12345)
+    }
+  })
+
+  expect(Number.isNaN(result.noArgs)).toBe(true)
+  expect(Number.isNaN(result.undefinedX)).toBe(true)
+  expect(result.extra).toBe(result.three)
+})
 }
 
 test('p5.js 2.3.0 leaves strands noise untouched in simplex mode', async ({ page }) => {

@@ -18,7 +18,7 @@ for (const version of versions) {
       )
 
       await page.addScriptTag({ path: p5Path })
-      
+
       await page.evaluate(trackRegistration => {
         window.__noiseBefore = {
           noise: p5.prototype.noise,
@@ -54,7 +54,7 @@ for (const version of versions) {
       }
     }, markerKey)
 
-    
+
       expect(firstLoad.installed).toBe(true)
       expect(firstLoad.enumerable).toBe(false)
       expect(firstLoad.noiseUnchanged).toBe(false)
@@ -98,4 +98,31 @@ for (const version of versions) {
       })
     })
   }
+    test(`${version.name} does not wrap noise APIs again when reloaded`, async ({ page }) => {
+    const p5Path = path.resolve(
+      __dirname,
+      `../node_modules/${version.package}/lib/p5.min.js`
+    )
+
+    await page.addScriptTag({ path: p5Path })
+    await page.addScriptTag({ path: addonPath })
+
+    await page.evaluate(() => {
+      window.__noiseRef = p5.prototype.noise
+      window.__noiseSeedRef = p5.prototype.noiseSeed
+      window.__noiseModeRef = p5.prototype.noiseMode
+    })
+
+    await page.addScriptTag({ path: addonPath })
+
+    const result = await page.evaluate(() => ({
+      noiseSame: p5.prototype.noise === window.__noiseRef,
+      noiseSeedSame: p5.prototype.noiseSeed === window.__noiseSeedRef,
+      noiseModeSame: p5.prototype.noiseMode === window.__noiseModeRef
+    }))
+
+    expect(result.noiseSame).toBe(true)
+    expect(result.noiseSeedSame).toBe(true)
+    expect(result.noiseModeSame).toBe(true)
+  })
 }

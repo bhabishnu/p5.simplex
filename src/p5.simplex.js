@@ -315,7 +315,10 @@ function simplex(p5, fn) {
 
     const originalResult = originalNoise.apply(this, arguments)
 
-    if (typeof originalResult !== 'number') {
+    if (
+      typeof originalResult !== 'number' ||
+      Number.isNaN(originalResult)
+    ) {
       return originalResult
     }
 
