@@ -31,6 +31,33 @@ for (let i = 0; i < 512; i++) {
   perm[i] = permutation[i & 255]
 }
 
+function seedPermutation(seed) {
+  const values = new Array(256)
+
+  for (let i = 0; i < 256; i++) {
+    values[i] = i
+  }
+
+  let state = seed >>> 0
+
+  function next() {
+    state = (1664525 * state + 1013904223) % 4294967296
+    return state / 4294967296
+  }
+
+  for (let i = 255; i > 0; i--) {
+    const j = Math.floor(next() * (i + 1))
+    const value = values[i]
+
+    values[i] = values[j]
+    values[j] = value
+  }
+
+  for (let i = 0; i < 512; i++) {
+    perm[i] = values[i & 255]
+  }
+}
+
 function grad1(hash, x) {
   const h = hash & 15
   let grad = 1 + (h & 7)
@@ -261,12 +288,25 @@ function simplex(p5, fn) {
   })
 
   const originalNoise = fn.noise
+  const originalNoiseSeed = fn.noiseSeed
 
   fn.SIMPLEX = 'simplex'
 
   fn.noiseMode = function(mode) {
     this._noiseMode = mode
   }
+
+  fn.noiseSeed = function(seed) {
+  const normalizedSeed = seed == null
+    ? (Math.random() * 4294967296) >>> 0
+    : seed >>> 0
+
+  const result = originalNoiseSeed.call(this, normalizedSeed)
+
+  seedPermutation(normalizedSeed)
+
+  return result
+}
 
   fn.noise = function(x, y, z) {
     if (this._noiseMode !== fn.SIMPLEX) {

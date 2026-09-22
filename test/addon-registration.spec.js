@@ -58,7 +58,7 @@ for (const version of versions) {
       expect(firstLoad.installed).toBe(true)
       expect(firstLoad.enumerable).toBe(false)
       expect(firstLoad.noiseUnchanged).toBe(false)
-      expect(firstLoad.seedUnchanged).toBe(true)
+      expect(firstLoad.seedUnchanged).toBe(false)
       expect(firstLoad.detailUnchanged).toBe(true)
       expect(firstLoad.registerAddonCalls).toBe(version.registerAddon ? 1 : 0)
 
