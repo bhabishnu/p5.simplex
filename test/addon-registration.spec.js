@@ -6,6 +6,7 @@ const markerKey = 'p5.simplex.addon.installed'
 
 const versions = [
   { name: 'p5.js 1.11.13', package: 'p5-v1', registerAddon: false},
+  { name: 'p5.js 2.0.0', package: 'p5-v2-0', registerAddon: true },
   {name: 'p5.js 2.3.0', package: 'p5-v2', registerAddon: true }
 ]
 

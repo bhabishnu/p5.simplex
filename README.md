@@ -13,6 +13,7 @@ Built in response to [processing/p5.js#6152](https://github.com/processing/p5.js
 Tested with:
 
 - p5.js 1.11.13
+- p5.js 2.0.0
 - p5.js 2.3.0
 - global mode
 - instance mode
@@ -69,7 +70,7 @@ The addon preserves p5's existing `noiseSeed()` behavior when switching back to 
 ## Current scope
 
 - CPU-side 1D, 2D and 3D Simplex noise
-- Tested with p5.js 1.11.13 and 2.3.0; other releases are untested
+- Tested with p5.js 1.11.13, 2.0.0 and 2.3.0; other releases are untested
 - `noiseSeed()` integration
 - p5.js 2.3.0 Strands/shader noise is left untouched
 - In p5.js 2.3.0, CPU Simplex calls currently dispatch through p5's native `noise()` first so active Strands calls can be preserved without relying on private p5 internals

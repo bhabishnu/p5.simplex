@@ -10,7 +10,8 @@
   "devDependencies": {
     "@playwright/test": "^1.55.0",
     "p5-v1": "npm:p5@1.11.13",
-    "p5-v2": "npm:p5@2.3.0"
+    "p5-v2": "npm:p5@2.3.0",
+    "p5-v2-0": "npm:p5@^2.0.0"
   },
   "license": "MIT"
 }

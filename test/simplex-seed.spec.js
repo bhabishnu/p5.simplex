@@ -5,6 +5,7 @@ const addonPath = path.resolve(__dirname, '../src/p5.simplex.js')
 
 const versions = [
   { name: 'p5.js 1.11.13', package: 'p5-v1' },
+  { name: 'p5.js 2.0.0', package: 'p5-v2-0' },
   { name: 'p5.js 2.3.0', package: 'p5-v2' }
 ]
 
