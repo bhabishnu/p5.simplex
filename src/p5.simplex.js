@@ -355,13 +355,16 @@ function simplex(p5, fn) {
 
     let raw
 
-    if (arguments.length === 1) {
+    if (
+      arguments.length === 1 ||
+      (arguments.length === 2 && y === undefined)
+    ) {
       raw = simplex1D(x)
-    } else if (arguments.length === 2) {
-      raw = simplex2D(
-        x,
-        y === undefined ? 0 : y
-      )
+    } else if (
+      arguments.length === 2 ||
+      (arguments.length === 3 && z === undefined)
+    ) {
+      raw = simplex2D(x, y)
     } else {
       raw = simplex3D(
         x,

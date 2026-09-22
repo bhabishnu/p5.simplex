@@ -241,6 +241,13 @@ for (const version of versions) {
     return {
       noArgs: sketch.noise(),
       undefinedX: sketch.noise(undefined),
+
+      one: sketch.noise(0.123),
+      oneWithUndefined: sketch.noise(0.123, undefined),
+
+      two: sketch.noise(0.123, 0.456),
+      twoWithUndefined: sketch.noise(0.123, 0.456, undefined),
+
       three: sketch.noise(0.123, 0.456, 0.789),
       extra: sketch.noise(0.123, 0.456, 0.789, 12345)
     }
@@ -248,6 +255,8 @@ for (const version of versions) {
 
   expect(Number.isNaN(result.noArgs)).toBe(true)
   expect(Number.isNaN(result.undefinedX)).toBe(true)
+  expect(result.oneWithUndefined).toBe(result.one)
+  expect(result.twoWithUndefined).toBe(result.two)
   expect(result.extra).toBe(result.three)
 })
 }
