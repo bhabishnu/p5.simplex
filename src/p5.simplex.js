@@ -12,17 +12,11 @@
 (function() {
   const installed = Symbol.for('p5.simplex.addon.installed')
 
-  const perm = new Array(512)
+  const perm = new Uint8Array(512)
 
   let permutationInitialized = false
 
 function seedPermutation(seed) {
-  const values = new Array(256)
-
-  for (let i = 0; i < 256; i++) {
-    values[i] = i
-  }
-
   let state = seed >>> 0
 
   function next() {
@@ -30,17 +24,20 @@ function seedPermutation(seed) {
     return state / 4294967296
   }
 
+  for (let i = 0; i < 256; i++) {
+    perm[i] = i
+  }
+
   for (let i = 255; i > 0; i--) {
     const j = Math.floor(next() * (i + 1))
-    const value = values[i]
+    const value = perm[i]
 
-    values[i] = values[j]
-    values[j] = value
+    perm[i] = perm[j]
+    perm[j] = value
   }
 
-  for (let i = 0; i < 512; i++) {
-    perm[i] = values[i & 255]
-  }
+  // The second half repeats the first so corner hashes need no extra wrap.
+  perm.copyWithin(256, 0, 256)
 
   permutationInitialized = true
 }
@@ -74,6 +71,34 @@ function grad3(hash, x, y, z) {
     ((h & 2) ? -v : v)
 }
 
+// Each corner contributes (r^2 - d^2)^4 * grad. In 2D and 3D, `t >= 0` drops
+// corners outside the radius and also maps NaN distances (from overflowing
+// coordinates) to 0, so do not invert it to `t < 0`. In 1D |d| <= 1 always,
+// so there is no cutoff.
+function corner1D(hash, x) {
+  let t = 1 - x * x
+  t *= t
+  return t * t * grad1(hash, x)
+}
+
+function corner2D(hash, x, y) {
+  let t = 0.5 - x * x - y * y
+  if (t >= 0) {
+    t *= t
+    return t * t * grad2(hash, x, y)
+  }
+  return 0
+}
+
+function corner3D(hash, x, y, z) {
+  let t = 0.5 - x * x - y * y - z * z
+  if (t >= 0) {
+    t *= t
+    return t * t * grad3(hash, x, y, z)
+  }
+  return 0
+}
+
 function simplex1D(x) {
   const i0 = Math.floor(x)
   const i1 = i0 + 1
@@ -81,15 +106,10 @@ function simplex1D(x) {
   const x0 = x - i0
   const x1 = x0 - 1
 
-  let t0 = 1 - x0 * x0
-  t0 *= t0
-  const n0 = t0 * t0 * grad1(perm[i0 & 255], x0)
-
-  let t1 = 1 - x1 * x1
-  t1 *= t1
-  const n1 = t1 * t1 * grad1(perm[i1 & 255], x1)
-
-  return 0.395 * (n0 + n1)
+  return 0.395 * (
+    corner1D(perm[i0 & 255], x0) +
+    corner1D(perm[i1 & 255], x1)
+  )
 }
 
 function simplex2D(x, y) {
@@ -123,37 +143,11 @@ function simplex2D(x, y) {
   const ii = i & 255
   const jj = j & 255
 
-  let n0 = 0
-  let n1 = 0
-  let n2 = 0
-
-  let t0 = 0.5 - x0 * x0 - y0 * y0
-  if (t0 >= 0) {
-    t0 *= t0
-    n0 = t0 * t0 * grad2(perm[ii + perm[jj]], x0, y0)
-  }
-
-  let t1 = 0.5 - x1 * x1 - y1 * y1
-  if (t1 >= 0) {
-    t1 *= t1
-    n1 = t1 * t1 * grad2(
-      perm[ii + i1 + perm[jj + j1]],
-      x1,
-      y1
-    )
-  }
-
-  let t2 = 0.5 - x2 * x2 - y2 * y2
-  if (t2 >= 0) {
-    t2 *= t2
-    n2 = t2 * t2 * grad2(
-      perm[ii + 1 + perm[jj + 1]],
-      x2,
-      y2
-    )
-  }
-
-  return 40 * (n0 + n1 + n2)
+  return 40 * (
+    corner2D(perm[ii + perm[jj]], x0, y0) +
+    corner2D(perm[ii + i1 + perm[jj + j1]], x1, y1) +
+    corner2D(perm[ii + 1 + perm[jj + 1]], x2, y2)
+  )
 }
 
 function simplex3D(x, y, z) {
@@ -213,56 +207,12 @@ function simplex3D(x, y, z) {
   const jj = j & 255
   const kk = k & 255
 
-  let n0 = 0
-  let n1 = 0
-  let n2 = 0
-  let n3 = 0
-
-  let t0 = 0.5 - x0 * x0 - y0 * y0 - z0 * z0
-  if (t0 >= 0) {
-    t0 *= t0
-    n0 = t0 * t0 * grad3(
-      perm[ii + perm[jj + perm[kk]]],
-      x0,
-      y0,
-      z0
-    )
-  }
-
-  let t1 = 0.5 - x1 * x1 - y1 * y1 - z1 * z1
-  if (t1 >= 0) {
-    t1 *= t1
-    n1 = t1 * t1 * grad3(
-      perm[ii + i1 + perm[jj + j1 + perm[kk + k1]]],
-      x1,
-      y1,
-      z1
-    )
-  }
-
-  let t2 = 0.5 - x2 * x2 - y2 * y2 - z2 * z2
-  if (t2 >= 0) {
-    t2 *= t2
-    n2 = t2 * t2 * grad3(
-      perm[ii + i2 + perm[jj + j2 + perm[kk + k2]]],
-      x2,
-      y2,
-      z2
-    )
-  }
-
-  let t3 = 0.5 - x3 * x3 - y3 * y3 - z3 * z3
-  if (t3 >= 0) {
-    t3 *= t3
-    n3 = t3 * t3 * grad3(
-      perm[ii + 1 + perm[jj + 1 + perm[kk + 1]]],
-      x3,
-      y3,
-      z3
-    )
-  }
-
-  return 72 * (n0 + n1 + n2 + n3)
+  return 72 * (
+    corner3D(perm[ii + perm[jj + perm[kk]]], x0, y0, z0) +
+    corner3D(perm[ii + i1 + perm[jj + j1 + perm[kk + k1]]], x1, y1, z1) +
+    corner3D(perm[ii + i2 + perm[jj + j2 + perm[kk + k2]]], x2, y2, z2) +
+    corner3D(perm[ii + 1 + perm[jj + 1 + perm[kk + 1]]], x3, y3, z3)
+  )
 }
 
 function simplex(p5, fn) {
