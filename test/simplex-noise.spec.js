@@ -260,6 +260,90 @@ for (const version of versions) {
   expect(result.twoWithUndefined).toBe(result.two)
   expect(result.extra).toBe(result.three)
 })
+
+  test(`${version.name} coerces numeric coordinates like default noise in simplex mode`, async ({ page }) => {
+  const p5Path = path.resolve(
+    __dirname,
+    `../node_modules/${version.package}/lib/p5.min.js`
+  )
+
+  await page.addScriptTag({ path: p5Path })
+  await page.addScriptTag({ path: addonPath })
+
+  const result = await page.evaluate(() => {
+    const sketch = new p5(function() {})
+
+    sketch.noiseMode(sketch.SIMPLEX)
+    sketch.noiseSeed(1234)
+
+    return {
+      one: sketch.noise(0.123),
+      oneString: sketch.noise('0.123'),
+
+      two: sketch.noise(0.123, 0.456),
+      twoString: sketch.noise('0.123', '0.456'),
+
+      three: sketch.noise(0.123, 0.456, 0.789),
+      threeString: sketch.noise('0.123', '0.456', '0.789'),
+      threeMixed: sketch.noise(0.123, '0.456', 0.789),
+
+      twoZeroY: sketch.noise(0.123, 0),
+      twoNullY: sketch.noise(0.123, null)
+    }
+  })
+
+  expect(result.two).not.toBe(0.5)
+  expect(result.three).not.toBe(0.5)
+
+  expect(result.oneString).toBe(result.one)
+  expect(result.twoString).toBe(result.two)
+  expect(result.threeString).toBe(result.three)
+  expect(result.threeMixed).toBe(result.three)
+  expect(result.twoNullY).toBe(result.twoZeroY)
+})
+
+  test(`${version.name} returns NaN for non-finite coordinates like default noise`, async ({ page }) => {
+  const p5Path = path.resolve(
+    __dirname,
+    `../node_modules/${version.package}/lib/p5.min.js`
+  )
+
+  await page.addScriptTag({ path: p5Path })
+  await page.addScriptTag({ path: addonPath })
+
+  const result = await page.evaluate(() => {
+    const sketch = new p5(function() {})
+
+    const cases = [
+      [NaN],
+      [Infinity],
+      [-Infinity],
+      ['abc'],
+      [0.123, NaN],
+      [Infinity, 0.456],
+      [0.123, -Infinity],
+      [0.123, 0.456, NaN],
+      [0.123, Infinity, 0.789],
+      [0.123, 0.456, -Infinity]
+    ]
+
+    sketch.noiseSeed(1234)
+    const defaultValues = cases.map(args => sketch.noise(...args))
+
+    sketch.noiseMode(sketch.SIMPLEX)
+    const simplexValues = cases.map(args => sketch.noise(...args))
+
+    return {
+      defaultNaN: defaultValues.map(Number.isNaN),
+      simplexNaN: simplexValues.map(Number.isNaN),
+      finite: sketch.noise(0.123, 0.456, 0.789)
+    }
+  })
+
+  expect(result.defaultNaN.every(Boolean)).toBe(true)
+  expect(result.simplexNaN).toEqual(result.defaultNaN)
+  expect(Number.isFinite(result.finite)).toBe(true)
+})
 }
 
 test('p5.js 2.3.0 leaves strands noise untouched in simplex mode', async ({ page }) => {

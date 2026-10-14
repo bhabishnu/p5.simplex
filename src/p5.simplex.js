@@ -342,10 +342,25 @@ function simplex(p5, fn) {
      }
     }
 
+    let dimensions = 3
+
     if (
-      !needsNativeNoiseDispatch &&
-      (arguments.length === 0 || x === undefined || Number.isNaN(x))
+      arguments.length === 1 ||
+      (arguments.length === 2 && y === undefined)
     ) {
+      dimensions = 1
+    } else if (
+      arguments.length === 2 ||
+      (arguments.length === 3 && z === undefined)
+    ) {
+      dimensions = 2
+    }
+
+    x = Number(x)
+    y = y === undefined ? 0 : Number(y)
+    z = z === undefined ? 0 : Number(z)
+
+    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) {
       return NaN
     }
 
@@ -355,22 +370,12 @@ function simplex(p5, fn) {
 
     let raw
 
-    if (
-      arguments.length === 1 ||
-      (arguments.length === 2 && y === undefined)
-    ) {
+    if (dimensions === 1) {
       raw = simplex1D(x)
-    } else if (
-      arguments.length === 2 ||
-      (arguments.length === 3 && z === undefined)
-    ) {
+    } else if (dimensions === 2) {
       raw = simplex2D(x, y)
     } else {
-      raw = simplex3D(
-        x,
-        y === undefined ? 0 : y,
-        z === undefined ? 0 : z
-      )
+      raw = simplex3D(x, y, z)
     }
 
     return (raw + 1) * 0.5
