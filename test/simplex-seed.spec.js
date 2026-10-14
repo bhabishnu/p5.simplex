@@ -1,23 +1,9 @@
-const path = require('node:path')
 const { test, expect } = require('@playwright/test')
+const { P5_VERSIONS, loadP5WithAddon } = require('./support/p5')
 
-const addonPath = path.resolve(__dirname, '../src/p5.simplex.js')
-
-const versions = [
-  { name: 'p5.js 1.11.13', package: 'p5-v1' },
-  { name: 'p5.js 2.0.0', package: 'p5-v2-0' },
-  { name: 'p5.js 2.3.0', package: 'p5-v2' }
-]
-
-for (const version of versions) {
-  test(`${version.name} reseeds simplex noise deterministically`, async ({ page }) => {
-    const p5Path = path.resolve(
-      __dirname,
-      `../node_modules/${version.package}/lib/p5.min.js`
-    )
-
-    await page.addScriptTag({ path: p5Path })
-    await page.addScriptTag({ path: addonPath })
+for (const version of P5_VERSIONS) {
+  test(`p5.js ${version} reseeds simplex noise deterministically`, async ({ page }) => {
+    await loadP5WithAddon(page, version)
 
     const result = await page.evaluate(() => {
       const sketch = new p5(function() {})
@@ -39,14 +25,8 @@ for (const version of versions) {
     expect(result.different).not.toBe(result.first)
   })
 
-  test(`${version.name} keeps p5 noiseSeed behavior while simplex mode is active`, async ({ page }) => {
-    const p5Path = path.resolve(
-      __dirname,
-      `../node_modules/${version.package}/lib/p5.min.js`
-    )
-
-    await page.addScriptTag({ path: p5Path })
-    await page.addScriptTag({ path: addonPath })
+  test(`p5.js ${version} keeps p5 noiseSeed behavior while simplex mode is active`, async ({ page }) => {
+    await loadP5WithAddon(page, version)
 
     const result = await page.evaluate(() => {
       const sketch = new p5(function() {})
@@ -72,14 +52,8 @@ for (const version of versions) {
     expect(result.returnValue).toBeUndefined()
   })
 
-  test(`${version.name} follows p5 seed coercion`, async ({ page }) => {
-  const p5Path = path.resolve(
-    __dirname,
-    `../node_modules/${version.package}/lib/p5.min.js`
-  )
-
-  await page.addScriptTag({ path: p5Path })
-  await page.addScriptTag({ path: addonPath })
+  test(`p5.js ${version} follows p5 seed coercion`, async ({ page }) => {
+  await loadP5WithAddon(page, version)
 
   const result = await page.evaluate(() => {
     const sketch = new p5(function() {})
@@ -111,14 +85,8 @@ for (const version of versions) {
   expect(result.wrappedZero).toBe(result.zero)
 })
 
-  test(`${version.name} shares simplex seed state across instances`, async ({ page }) => {
-  const p5Path = path.resolve(
-    __dirname,
-    `../node_modules/${version.package}/lib/p5.min.js`
-  )
-
-  await page.addScriptTag({ path: p5Path })
-  await page.addScriptTag({ path: addonPath })
+  test(`p5.js ${version} shares simplex seed state across instances`, async ({ page }) => {
+  await loadP5WithAddon(page, version)
 
   const result = await page.evaluate(() => {
     const a = new p5(function() {})
@@ -143,14 +111,8 @@ for (const version of versions) {
   expect(result.afterA).not.toBe(result.before)
 })
 
-  test(`${version.name} uses one random draw for null and undefined seeds`, async ({ page }) => {
-  const p5Path = path.resolve(
-    __dirname,
-    `../node_modules/${version.package}/lib/p5.min.js`
-  )
-
-  await page.addScriptTag({ path: p5Path })
-  await page.addScriptTag({ path: addonPath })
+  test(`p5.js ${version} uses one random draw for null and undefined seeds`, async ({ page }) => {
+  await loadP5WithAddon(page, version)
 
   const result = await page.evaluate(() => {
     const sketch = new p5(function() {})
@@ -188,14 +150,8 @@ for (const version of versions) {
   expect(result.nullValue).toBe(result.undefinedValue)
 })
 
-  test(`${version.name} matches seeded simplex reference values`, async ({ page }) => {
-  const p5Path = path.resolve(
-    __dirname,
-    `../node_modules/${version.package}/lib/p5.min.js`
-  )
-
-  await page.addScriptTag({ path: p5Path })
-  await page.addScriptTag({ path: addonPath })
+  test(`p5.js ${version} matches seeded simplex reference values`, async ({ page }) => {
+  await loadP5WithAddon(page, version)
 
   const result = await page.evaluate(() => {
     const sketch = new p5(function() {})

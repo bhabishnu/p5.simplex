@@ -1,24 +1,20 @@
-const path = require('node:path')
 const { test, expect } = require('@playwright/test')
+const {
+  P5_VERSIONS,
+  loadP5,
+  loadAddon,
+  loadP5WithAddon
+} = require('./support/p5')
 
-const addonPath = path.resolve(__dirname, '../src/p5.simplex.js')
 const markerKey = 'p5.simplex.addon.installed'
 
-const versions = [
-  { name: 'p5.js 1.11.13', package: 'p5-v1', registerAddon: false},
-  { name: 'p5.js 2.0.0', package: 'p5-v2-0', registerAddon: true },
-  {name: 'p5.js 2.3.0', package: 'p5-v2', registerAddon: true }
-]
+for (const version of P5_VERSIONS) {
+  // p5.registerAddon exists from p5.js 2.0 onwards.
+  const registerAddon = !version.startsWith('1.')
 
-for (const version of versions) {
   for (const mode of ['global', 'instance']) {
-    test(`${version.name} registers in ${mode} mode`, async ({ page }) => {
-      const p5Path = path.resolve(
-        __dirname,
-        `../node_modules/${version.package}/lib/p5.min.js`
-      )
-
-      await page.addScriptTag({ path: p5Path })
+    test(`p5.js ${version} registers in ${mode} mode`, async ({ page }) => {
+      await loadP5(page, version)
 
       await page.evaluate(trackRegistration => {
         window.__noiseBefore = {
@@ -37,9 +33,9 @@ for (const version of versions) {
           return original.apply(this, args)
         }
       }
-    }, version.registerAddon)
+    }, registerAddon)
 
-    await page.addScriptTag({ path: addonPath})
+    await loadAddon(page)
 
     const firstLoad = await page.evaluate(key => {
       const marker = Symbol.for(key)
@@ -61,9 +57,9 @@ for (const version of versions) {
       expect(firstLoad.noiseUnchanged).toBe(false)
       expect(firstLoad.seedUnchanged).toBe(false)
       expect(firstLoad.detailUnchanged).toBe(true)
-      expect(firstLoad.registerAddonCalls).toBe(version.registerAddon ? 1 : 0)
+      expect(firstLoad.registerAddonCalls).toBe(registerAddon ? 1 : 0)
 
-      await page.addScriptTag({ path: addonPath })
+      await loadAddon(page)
 
       const markerCount = await page.evaluate(key =>
         Object.getOwnPropertySymbols(p5.prototype)
@@ -99,14 +95,8 @@ for (const version of versions) {
       })
     })
   }
-    test(`${version.name} does not wrap noise APIs again when reloaded`, async ({ page }) => {
-    const p5Path = path.resolve(
-      __dirname,
-      `../node_modules/${version.package}/lib/p5.min.js`
-    )
-
-    await page.addScriptTag({ path: p5Path })
-    await page.addScriptTag({ path: addonPath })
+  test(`p5.js ${version} does not wrap noise APIs again when reloaded`, async ({ page }) => {
+    await loadP5WithAddon(page, version)
 
     await page.evaluate(() => {
       window.__noiseRef = p5.prototype.noise
@@ -114,7 +104,7 @@ for (const version of versions) {
       window.__noiseModeRef = p5.prototype.noiseMode
     })
 
-    await page.addScriptTag({ path: addonPath })
+    await loadAddon(page)
 
     const result = await page.evaluate(() => ({
       noiseSame: p5.prototype.noise === window.__noiseRef,

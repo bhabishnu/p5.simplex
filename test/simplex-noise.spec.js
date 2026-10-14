@@ -1,22 +1,14 @@
-const path = require('node:path')
 const { test, expect } = require('@playwright/test')
+const {
+  P5_VERSIONS,
+  loadP5,
+  loadAddon,
+  loadP5WithAddon
+} = require('./support/p5')
 
-const addonPath = path.resolve(__dirname, '../src/p5.simplex.js')
-
-const versions = [
-  { name: 'p5.js 1.11.13', package: 'p5-v1' },
-  { name: 'p5.js 2.0.0', package: 'p5-v2-0' },
-  { name: 'p5.js 2.3.0', package: 'p5-v2' }
-]
-
-for (const version of versions) {
-  test(`${version.name} exposes simplex API without changing default noise`, async ({ page }) => {
-    const p5Path = path.resolve(
-      __dirname,
-      `../node_modules/${version.package}/lib/p5.min.js`
-    )
-
-    await page.addScriptTag({ path: p5Path })
+for (const version of P5_VERSIONS) {
+  test(`p5.js ${version} exposes simplex API without changing default noise`, async ({ page }) => {
+    await loadP5(page, version)
 
     const before = await page.evaluate(() => {
       const sketch = new p5(function() {})
@@ -30,7 +22,7 @@ for (const version of versions) {
       ]
     })
 
-    await page.addScriptTag({ path: addonPath })
+    await loadAddon(page)
 
     const after = await page.evaluate(() => {
       const sketch = new p5(function() {})
@@ -53,14 +45,8 @@ for (const version of versions) {
     expect(after.values).toEqual(before)
   })
 
-  test(`${version.name} switches to simplex noise`, async ({ page }) => {
-  const p5Path = path.resolve(
-    __dirname,
-    `../node_modules/${version.package}/lib/p5.min.js`
-  )
-
-  await page.addScriptTag({ path: p5Path })
-  await page.addScriptTag({ path: addonPath })
+  test(`p5.js ${version} switches to simplex noise`, async ({ page }) => {
+  await loadP5WithAddon(page, version)
 
   const result = await page.evaluate(() => {
     const sketch = new p5(function() {})
@@ -85,14 +71,8 @@ for (const version of versions) {
   expect(result.simplexValue).not.toBe(result.defaultValue)
 })
 
-  test(`${version.name} randomizes unseeded simplex once`, async ({ page }) => {
-  const p5Path = path.resolve(
-    __dirname,
-    `../node_modules/${version.package}/lib/p5.min.js`
-  )
-
-  await page.addScriptTag({ path: p5Path })
-  await page.addScriptTag({ path: addonPath })
+  test(`p5.js ${version} randomizes unseeded simplex once`, async ({ page }) => {
+  await loadP5WithAddon(page, version)
 
   const result = await page.evaluate(() => {
     const sketch = new p5(function() {})
@@ -122,14 +102,8 @@ for (const version of versions) {
   expect(result.first).toBe(result.explicit)
 })
 
-  test(`${version.name} keeps simplex mode isolated per instance`, async ({ page }) => {
-  const p5Path = path.resolve(
-    __dirname,
-    `../node_modules/${version.package}/lib/p5.min.js`
-  )
-
-  await page.addScriptTag({ path: p5Path })
-  await page.addScriptTag({ path: addonPath })
+  test(`p5.js ${version} keeps simplex mode isolated per instance`, async ({ page }) => {
+  await loadP5WithAddon(page, version)
 
   const result = await page.evaluate(() => {
     const a = new p5(function() {})
@@ -167,14 +141,8 @@ for (const version of versions) {
   expect(result.restoredA).toBe(result.defaultA)
 })
 
-  test(`${version.name} routes simplex noise in global mode`, async ({ page }) => {
-  const p5Path = path.resolve(
-    __dirname,
-    `../node_modules/${version.package}/lib/p5.min.js`
-  )
-
-  await page.addScriptTag({ path: p5Path })
-  await page.addScriptTag({ path: addonPath })
+  test(`p5.js ${version} routes simplex noise in global mode`, async ({ page }) => {
+  await loadP5WithAddon(page, version)
 
   const result = await page.evaluate(() => {
     window.setup = function() {}
@@ -201,14 +169,8 @@ for (const version of versions) {
   expect(result.simplexValue).toBeLessThanOrEqual(1)
 })
 
-  test(`${version.name} falls back to default noise for unknown modes`, async ({ page }) => {
-  const p5Path = path.resolve(
-    __dirname,
-    `../node_modules/${version.package}/lib/p5.min.js`
-  )
-
-  await page.addScriptTag({ path: p5Path })
-  await page.addScriptTag({ path: addonPath })
+  test(`p5.js ${version} falls back to default noise for unknown modes`, async ({ page }) => {
+  await loadP5WithAddon(page, version)
 
   const result = await page.evaluate(() => {
     const sketch = new p5(function() {})
@@ -225,14 +187,8 @@ for (const version of versions) {
   expect(result.actual).toBe(result.expected)
 })
 
-  test(`${version.name} handles default and extra arguments in simplex mode`, async ({ page }) => {
-  const p5Path = path.resolve(
-    __dirname,
-    `../node_modules/${version.package}/lib/p5.min.js`
-  )
-
-  await page.addScriptTag({ path: p5Path })
-  await page.addScriptTag({ path: addonPath })
+  test(`p5.js ${version} handles default and extra arguments in simplex mode`, async ({ page }) => {
+  await loadP5WithAddon(page, version)
 
   const result = await page.evaluate(() => {
     const sketch = new p5(function() {})
@@ -261,14 +217,8 @@ for (const version of versions) {
   expect(result.extra).toBe(result.three)
 })
 
-  test(`${version.name} coerces numeric coordinates like default noise in simplex mode`, async ({ page }) => {
-  const p5Path = path.resolve(
-    __dirname,
-    `../node_modules/${version.package}/lib/p5.min.js`
-  )
-
-  await page.addScriptTag({ path: p5Path })
-  await page.addScriptTag({ path: addonPath })
+  test(`p5.js ${version} coerces numeric coordinates like default noise in simplex mode`, async ({ page }) => {
+  await loadP5WithAddon(page, version)
 
   const result = await page.evaluate(() => {
     const sketch = new p5(function() {})
@@ -302,14 +252,8 @@ for (const version of versions) {
   expect(result.twoNullY).toBe(result.twoZeroY)
 })
 
-  test(`${version.name} returns NaN for non-finite coordinates like default noise`, async ({ page }) => {
-  const p5Path = path.resolve(
-    __dirname,
-    `../node_modules/${version.package}/lib/p5.min.js`
-  )
-
-  await page.addScriptTag({ path: p5Path })
-  await page.addScriptTag({ path: addonPath })
+  test(`p5.js ${version} returns NaN for non-finite coordinates like default noise`, async ({ page }) => {
+  await loadP5WithAddon(page, version)
 
   const result = await page.evaluate(() => {
     const sketch = new p5(function() {})
@@ -346,65 +290,57 @@ for (const version of versions) {
 })
 }
 
-test('p5.js 2.3.0 leaves strands noise untouched in simplex mode', async ({ page }) => {
-  const p5Path = path.resolve(
-    __dirname,
-    '../node_modules/p5-v2/lib/p5.min.js'
-  )
+// p5.strands shader builders are only exercised on the 2.3 line.
+for (const version of ['2.3.0', '2.3.4']) {
+  test(`p5.js ${version} leaves strands noise untouched in simplex mode`, async ({ page }) => {
+    await loadP5WithAddon(page, version)
 
-  await page.addScriptTag({ path: p5Path })
-  await page.addScriptTag({ path: addonPath })
+    const observations = await page.evaluate(() =>
+      new Promise((resolve, reject) => {
+        new p5(sketch => {
+          sketch.setup = function() {
+            try {
+              sketch.createCanvas(1, 1, sketch.WEBGL)
+              sketch.noLoop()
+              sketch.noiseMode(sketch.SIMPLEX)
 
-  const observations = await page.evaluate(() =>
-    new Promise((resolve, reject) => {
-      new p5(sketch => {
-        sketch.setup = function() {
-          try {
-            sketch.createCanvas(1, 1, sketch.WEBGL)
-            sketch.noLoop()
-            sketch.noiseMode(sketch.SIMPLEX)
+              let captured
 
-            let captured
-
-            const capture = result => {
-              captured = {
-                type: typeof result,
-                isStrandsNode: result.isStrandsNode,
-                dimension: result.dimension
+              const capture = result => {
+                captured = {
+                  type: typeof result,
+                  isStrandsNode: result.isStrandsNode,
+                  dimension: result.dimension
+                }
               }
+
+              sketch.buildFilterShader(() => {
+                sketch.getColor(() => {
+                  const result = sketch.noise(0.123, 0.456)
+                  capture(result)
+                  return [result, 0, 0, 1]
+                })
+              }, { sketch, capture })
+
+              resolve(captured)
+            } catch (error) {
+              reject(error)
             }
-
-            sketch.buildFilterShader(() => {
-              sketch.getColor(() => {
-                const result = sketch.noise(0.123, 0.456)
-                capture(result)
-                return [result, 0, 0, 1]
-              })
-            }, { sketch, capture })
-
-            resolve(captured)
-          } catch (error) {
-            reject(error)
           }
-        }
+        })
       })
-    })
-  )
+    )
 
-  expect(observations).toEqual({
-    type: 'object',
-    isStrandsNode: true,
-    dimension: 1
+    expect(observations).toEqual({
+      type: 'object',
+      isStrandsNode: true,
+      dimension: 1
+    })
   })
-})
+}
 
 test('p5.js 1.11.13 skips native noise for CPU simplex samples', async ({ page }) => {
-  const p5Path = path.resolve(
-    __dirname,
-    '../node_modules/p5-v1/lib/p5.min.js'
-  )
-
-  await page.addScriptTag({ path: p5Path })
+  await loadP5(page, '1.11.13')
 
   await page.evaluate(() => {
     const originalNoise = p5.prototype.noise
@@ -417,7 +353,7 @@ test('p5.js 1.11.13 skips native noise for CPU simplex samples', async ({ page }
     }
   })
 
-  await page.addScriptTag({ path: addonPath })
+  await loadAddon(page)
 
   const result = await page.evaluate(() => {
     const sketch = new p5(function() {})
