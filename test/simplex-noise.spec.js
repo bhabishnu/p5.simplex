@@ -141,6 +141,42 @@ for (const version of P5_VERSIONS) {
   expect(result.restoredA).toBe(result.defaultA)
 })
 
+  test(`p5.js ${version} restores native and simplex values across repeated mode switches`, async ({ page }) => {
+    await loadP5WithAddon(page, version)
+
+    const result = await page.evaluate(() => {
+      const sketch = new p5(function() {})
+      const points = [[0.123], [0.123, 0.456], [0.123, 0.456, 0.789]]
+      const sample = () => points.map(point => sketch.noise(...point))
+
+      sketch.noiseSeed(1234)
+
+      // Any mode other than SIMPLEX uses native noise; 'default' matches the
+      // other tests and does not settle the public spelling.
+      const native = sample()
+      sketch.noiseMode(sketch.SIMPLEX)
+      const simplex = sample()
+      sketch.noiseMode('default')
+      const nativeAgain = sample()
+      sketch.noiseMode(sketch.SIMPLEX)
+      const simplexAgain = sample()
+
+      return { native, simplex, nativeAgain, simplexAgain }
+    })
+
+    expect(result.simplex).toEqual([
+      0.3434565389153417,
+      0.45901264471893405,
+      0.3977113023828554
+    ])
+    expect(result.nativeAgain).toEqual(result.native)
+    expect(result.simplexAgain).toEqual(result.simplex)
+
+    result.simplex.forEach((value, i) => {
+      expect(value).not.toBe(result.native[i])
+    })
+  })
+
   test(`p5.js ${version} routes simplex noise in global mode`, async ({ page }) => {
   await loadP5WithAddon(page, version)
 

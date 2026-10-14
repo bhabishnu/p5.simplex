@@ -1,6 +1,31 @@
 const { test, expect } = require('@playwright/test')
 const { P5_VERSIONS, loadP5WithAddon } = require('./support/p5')
 
+// Expected values come from an independent generic N-D simplex reference
+// (corners ordered by sorting, Gustavson's gradients and constants), not from
+// src/. The reference agrees with the addon bit-for-bit, so values are exact.
+const REFERENCE_SEEDS = [0, 1234, 4294967295]
+
+// [coordinates, ...expected value for each REFERENCE_SEEDS entry]
+const REFERENCE_CASES = [
+  [[0.123], 0.5725030408862327, 0.3434565389153417, 0.5874850477393032],
+  [[-0.123], 0.42897322805985766, 0.6634327161664136, 0.40611778682763827],
+  [[3.75], 0.3528627109527588, 0.7286923789978027, 0.7778406047821045],
+  [[-41.3], 0.4874280067549993, 0.6470359796675011, 0.5938333220300005],
+  [[1000.5], 0.62498046875, 0.562490234375, 0.562490234375],
+  [[2147483648.3], 0.6967152687358171, 0.2810556634532292, 0.5876994197664454],
+  [[0.123, 0.456], 0.23380749449335236, 0.45901264471893405, 0.46924700345089493],
+  [[-0.123, -0.456], 0.5284943422650225, 0.36151349242932596, 0.5516238810572619],
+  [[12.34, -5.67], 0.8728130054167016, 0.6106826215311569, 0.8616714185491244],
+  [[-100.25, 37.5], 0.19950941164738867, 0.3989362931996549, 0.715016453856224],
+  [[-1000000.75, 2500.5], 0.17721593118984214, 0.17421891204965023, 0.28990550907906115],
+  [[0.123, 0.456, 0.789], 0.6061988525365396, 0.3977113023828554, 0.4128982440071999],
+  [[-0.123, -0.456, -0.789], 0.4794095797907302, 0.5066199810082156, 0.4930084967759281],
+  [[1.5, -2.25, 3.125], 0.5790749898663274, 0.539642639734127, 0.5295188780184146],
+  [[-17.3, 8.6, -0.4], 0.7564253771851863, 0.23461856903703604, 0.7474693234074083],
+  [[123456.789, -98765.4321, 5555.5], 0.8832106644728254, 0.5980283967666066, 0.18079413066580052]
+]
+
 for (const version of P5_VERSIONS) {
   test(`p5.js ${version} reseeds simplex noise deterministically`, async ({ page }) => {
     await loadP5WithAddon(page, version)
@@ -150,24 +175,25 @@ for (const version of P5_VERSIONS) {
   expect(result.nullValue).toBe(result.undefinedValue)
 })
 
-  test(`p5.js ${version} matches seeded simplex reference values`, async ({ page }) => {
-  await loadP5WithAddon(page, version)
+  test(`p5.js ${version} matches seeded simplex reference values exactly`, async ({ page }) => {
+    await loadP5WithAddon(page, version)
 
-  const result = await page.evaluate(() => {
-    const sketch = new p5(function() {})
+    const points = REFERENCE_CASES.map(([point]) => point)
 
-    sketch.noiseMode(sketch.SIMPLEX)
-    sketch.noiseSeed(1234)
+    const actual = await page.evaluate(({ seeds, points }) => {
+      const sketch = new p5(function() {})
+      sketch.noiseMode(sketch.SIMPLEX)
 
-    return {
-      oneD: sketch.noise(0.123),
-      twoD: sketch.noise(0.123, 0.456),
-      threeD: sketch.noise(0.123, 0.456, 0.789)
-    }
+      return seeds.flatMap(seed => {
+        sketch.noiseSeed(seed)
+        return points.map(point => ({ seed, point, value: sketch.noise(...point) }))
+      })
+    }, { seeds: REFERENCE_SEEDS, points })
+
+    const expected = REFERENCE_SEEDS.flatMap((seed, column) =>
+      REFERENCE_CASES.map(([point, ...values]) => ({ seed, point, value: values[column] }))
+    )
+
+    expect(actual).toEqual(expected)
   })
-
-  expect(result.oneD).toBeCloseTo(0.3434565389153417, 10)
-  expect(result.twoD).toBeCloseTo(0.45901264471893405, 10)
-  expect(result.threeD).toBeCloseTo(0.3977113023828554, 10)
-})
 }

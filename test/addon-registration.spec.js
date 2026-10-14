@@ -95,16 +95,37 @@ for (const version of P5_VERSIONS) {
       })
     })
   }
-  test(`p5.js ${version} does not wrap noise APIs again when reloaded`, async ({ page }) => {
+  test(`p5.js ${version} keeps noise APIs and output unchanged when reloaded`, async ({ page }) => {
     await loadP5WithAddon(page, version)
 
+    // Samples the same seeded sketch in both modes without reseeding it.
+    const sample = () => page.evaluate(() => {
+      const sketch = window.__sketch
+      const points = [[0.123], [0.123, 0.456], [0.123, 0.456, 0.789]]
+
+      sketch.noiseMode('default')
+      const native = points.map(point => sketch.noise(...point))
+
+      sketch.noiseMode(sketch.SIMPLEX)
+      const simplex = points.map(point => sketch.noise(...point))
+
+      return { native, simplex }
+    })
+
     await page.evaluate(() => {
+      window.__sketch = new p5(function() {})
+      window.__sketch.noiseSeed(1234)
+
       window.__noiseRef = p5.prototype.noise
       window.__noiseSeedRef = p5.prototype.noiseSeed
       window.__noiseModeRef = p5.prototype.noiseMode
     })
 
+    const before = await sample()
+
     await loadAddon(page)
+
+    const after = await sample()
 
     const result = await page.evaluate(() => ({
       noiseSame: p5.prototype.noise === window.__noiseRef,
@@ -115,5 +136,12 @@ for (const version of P5_VERSIONS) {
     expect(result.noiseSame).toBe(true)
     expect(result.noiseSeedSame).toBe(true)
     expect(result.noiseModeSame).toBe(true)
+
+    expect(before.simplex).toEqual([
+      0.3434565389153417,
+      0.45901264471893405,
+      0.3977113023828554
+    ])
+    expect(after).toEqual(before)
   })
 }
